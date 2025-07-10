@@ -8,7 +8,7 @@ const createTask = async (req, res) => {
     const newTask = new Task({
       title,
       description,
-      user: "6869558f6cc6822c9633d1b0", // 👈 hardcoded for now
+      user: req.user.userId, // Attach the logged-in user's ID
     });
 
     await newTask.save();
@@ -23,7 +23,7 @@ const createTask = async (req, res) => {
 // Get all tasks
 const getTasks = async (req, res) => {
   try {
-    const tasks = await Task.find();
+    const tasks = await Task.find({ user: req.user.userId });
     res.json(tasks);
   } catch (err) {
     res.status(500).json({ message: "Error fetching tasks" });
@@ -36,23 +36,42 @@ const updateTask = async (req, res) => {
     const { id } = req.params;
     const { title, description } = req.body;
 
-    const updatedTask = await Task.findByIdAndUpdate(
-      id,
-      { title, description, user: "6869558f6cc6822c9633d1b0" },
-      { new: true }
-    );
-    res.json(updatedTask);
+    // Check if the task belongs to the logged-in user
+    const task = await Task.findOne({ _id: id, user: req.user.userId });
+
+    if (!task) {
+      return res
+        .status(404)
+        .json({ message: "Task not found or unauthorized" });
+    }
+
+    // Update fields
+    task.title = title || task.title;
+    task.description = description || task.description;
+
+    await task.save();
+
+    res.json(task);
   } catch (err) {
     res.status(500).json({ message: "Error updating task" });
   }
 };
+
 
 // Delete task
 const deleteTask = async (req, res) => {
   try {
     const { id } = req.params;
 
-    await Task.findByIdAndDelete(id);
+    // Only delete if the task belongs to the user
+    const task = await Task.findOneAndDelete({ _id: id, user: req.user.userId });
+
+    if (!task) {
+      return res
+        .status(404)
+        .json({ message: "Task not found or unauthorized" });
+    }
+
     res.json({ message: "Task deleted" });
   } catch (err) {
     res.status(500).json({ message: "Error deleting task" });

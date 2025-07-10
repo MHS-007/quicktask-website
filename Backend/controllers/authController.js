@@ -1,4 +1,5 @@
 const User = require("../models/User");
+const jwt = require("jsonwebtoken");
 
 // Register a user
 const registerUser = async (req, res) => {
@@ -38,14 +39,21 @@ const loginUser = async (req, res) => {
       return res.status(400).json({ message: "Invalid email or password" });
     }
 
+    // ✅ Generate JWT token
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "1d", // token expiry optional
+    });
+
+    // ✅ Send token along with user info
     res.status(200).json({
-    message: "Login successful",
-    user: {
+      message: "Login successful",
+      token, // ✅ this is what Postman will show now
+      user: {
         _id: user._id,
         name: user.name,
         email: user.email,
-    },
-});
+      },
+    });
 
   } catch (err) {
     res.status(500).json({ message: "Something went wrong during login" });
